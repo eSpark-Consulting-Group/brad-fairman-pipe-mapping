@@ -10,16 +10,16 @@ To develop firmware for fish-pipe mapping
 2. Open flash download tool and select options as shown in screenshot below and click OK to proceed.      
 ![image](https://github.com/eSpark-Consultants/bradfairman-fishpipe-firmware/assets/144008938/eeeed66f-e3f0-4014-b35e-5e5686e71752)
 3. Click erase button on new window that opens, to first completely wipe off the ESP32 memory.
-4. Upload the provided [Code Binaries](C:\Users\eSpark\Documents\Bradmain-fishpipe\Firmware-Development\Binaries) as follows:
-    * Wifi-Prov-Custom.ino.bootloader.bin -> 0x1000
-    * Wifi-Prov-Custom.ino.partitions.bin -> 0x8000
-    * Wifi-Prov-Custom.ino.bin -> 0x10000
+4. Upload the provided [Code Binaries](https://github.com/eSpark-Consultants/bradfairman-fishpipe-firmware/tree/Development/Firmware-Development/Arduino/MPU6050_DMP6/Binaries) as follows:
+    * MPU6050_DMP6.ino.bootloader.bin -> 0x1000
+    * MPU6050_DMP6.ino.partitions.bin -> 0x8000
+    * MPU6050_DMP6.ino.bin -> 0x10000
 5. Press the start button to start the flashing process as shown in screenshot below:
 ![image](https://github.com/eSpark-Consultants/bradfairman-fishpipe-firmware/assets/144008938/d7077d10-d059-4cd3-a69e-52deb523aa0e)
 6. Once finished, close the software and reset the ESP32 using EN button on the Dev Module.
 
 ### Teapot Processing IDE
-1. Open the Processing IDE, go to [GUI_Code](C:\Users\eSpark\Documents\Bradmain-fishpipe\Firmware-Development\GUI_Code) and open it.
+1. Open the Processing IDE, go to [GUI_Code](https://github.com/eSpark-Consultants/bradfairman-fishpipe-firmware/tree/Development/Firmware-Development/Teapot/3D_representation) and open it.
 ![image](https://github.com/eSpark-Consultants/bradfairman-fishpipe-firmware/assets/144008938/0c96f399-27d5-4b10-8350-d6011d674f59)
 2. Right-click on the windows icon present at the taskbar, navigate to Device Manager and click on it.     
 ![image](https://github.com/eSpark-Consultants/bradfairman-fishpipe-firmware/assets/144008938/c4bb7255-ea72-44c4-af5c-812f16fcb0a2)
