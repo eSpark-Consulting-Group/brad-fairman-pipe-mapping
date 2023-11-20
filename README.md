@@ -14,8 +14,9 @@ To develop firmware for fish-pipe mapping
     * MPU6050_DMP6.ino.bootloader.bin -> 0x1000
     * MPU6050_DMP6.ino.partitions.bin -> 0x8000
     * MPU6050_DMP6.ino.bin -> 0x10000
-5. Press the start button to start the flashing process as shown in screenshot below:
-![image](https://github.com/eSpark-Consultants/bradfairman-fishpipe-firmware/assets/144008938/d7077d10-d059-4cd3-a69e-52deb523aa0e)
+5. Select the COM Port and press the start button to start the flashing process as shown in screenshot below:
+![image](https://github.com/eSpark-Consultants/bradfairman-fishpipe-firmware/assets/144008938/df68ce66-abdf-4ec1-bc65-92f982b4d45a)
+
 6. Once finished, close the software and reset the ESP32 using EN button on the Dev Module.
 
 ### Teapot Processing IDE
