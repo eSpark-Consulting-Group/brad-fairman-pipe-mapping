@@ -29,3 +29,4 @@ To develop firmware for fish-pipe mapping
 5. Now, go to Sketch>>Run in your Processing IDE.        ![image](https://github.com/eSpark-Consultants/bradfairman-fishpipe-firmware/assets/144008938/a02b604a-6aab-4bc1-92c0-5582eb41498a)
 
 6. Now you will see the GUI of your code with the distances displayed on the window. ![image](https://github.com/eSpark-Consultants/bradfairman-fishpipe-firmware/assets/144008938/eb3d128c-8d43-49f0-8f4c-e3874fda97d3)
+7. If there is a toxic library error, go to [libraryfolder](https://github.com/eSpark-Consultants/bradfairman-fishpipe-firmware/blob/Development/Firmware-Development/Teapot/libraries/processinglibraries.zip), download & extract it to any known path in your pc and then copy them to This PC>>Documents>>Processing>>libraries. Then restart your Teapot Processing IDE and your error will be resolved.
