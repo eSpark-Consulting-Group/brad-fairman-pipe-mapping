@@ -198,7 +198,7 @@ void serialEvent(Serial port) {
 
         if (synced == 0 && ch != '$') return;   // initial synchronization - also used to resync/realign if needed
         synced = 1;
-        print ((char)ch);
+        //print ((char)ch);
 
         if ((serialCount == 1 && ch != 2)
             || (serialCount == 16 && ch != '\r')
@@ -224,7 +224,7 @@ void serialEvent(Serial port) {
                 quat.set(q[0], q[1], q[2], q[3]);
                 temp = Float.intBitsToFloat((teapotPacket[10]) | (teapotPacket[11] << 8) | (teapotPacket[12] << 16) |(teapotPacket[13] << 24));
                 //float reconstructedFloatValue = Float.intBitsToFloat(temp);
-                print(temp);
+                println(temp);
                 //for(int i=10;i<14;i++)
                 //{
                 //  println((int)teapotPacket[i]);  
