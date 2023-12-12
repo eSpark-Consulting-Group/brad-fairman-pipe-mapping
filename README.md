@@ -1,7 +1,7 @@
 # BRADFAIRMAN-FISHPIPE-FIRMWARE
 To develop firmware for fish-pipe mapping
 ## WIRING DIAGRAM 
-
+[Wiring drawing](https://github.com/eSpark-Consultants/bradfairman-fishpipe-firmware/blob/Development/Wiring%20Diagram/MPU6050_schem_rev2.pdf)
 ## STEPS FOR COMPILING AND FLASHING 
 ### Required Softwares
 1. [ESP32 Flash Download Tool](https://www.espressif.com/sites/default/files/tools/flash_download_tool_3.9.4.zip)
