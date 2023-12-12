@@ -8,8 +8,8 @@
 #define SOUND_SPEED 0.034   // Speed of Sound in Air in cm/us
 #define CM_TO_INCH  0.393701 // 1 cm into inch
 #define LED_PIN  2 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
-#define trigPin 14
-#define echoPin 27
+#define trigPin 17
+#define echoPin 16
 
 bool blinkState = false;
 bool dmpReady = false;  // set true if DMP init was successful
