@@ -35,7 +35,7 @@ TaskState current_state = Teapot;
 void setup() 
 {
     #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-        Wire.begin(22,21);
+        Wire.begin(21,22);
         Wire.setClock(400000);
     #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
         Fastwire::setup(400, true);
