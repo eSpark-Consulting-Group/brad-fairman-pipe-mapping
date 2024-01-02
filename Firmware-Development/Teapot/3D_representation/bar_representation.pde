@@ -1,205 +1,142 @@
+// Import Toxiclibs library and Processing serial library
 import processing.serial.*;
 import processing.opengl.*;
 import toxi.geom.*;
 import toxi.processing.*;
 
-// NOTE: requires ToxicLibs to be installed in order to run properly.
-// 1. Download from http://toxiclibs.org/downloads
-// 2. Extract into [userdir]/Processing/libraries
-//    (location may be different on Mac/Linux)
-// 3. Run and bask in awesomeness
-
+// Create a ToxiclibsSupport object for 3D graphics
 ToxiclibsSupport gfx;
 
-Serial port;                         // The serial port
-char[] teapotPacket = new char[18];  // InvenSense Teapot packet
-int serialCount = 0;                 // current packet byte position
+// Serial port for communication with ESP32
+Serial port;
+
+// Teapot packet received from ESP32
+char[] teapotPacket = new char[18];
+
+// Variables to keep track of current packet byte position, synchronization, and interval
+int serialCount = 0;
 int synced = 0;
 int interval = 0;
 
+// Quaternion variables for orientation tracking
 float[] q = new float[4];
 float temp;
 Quaternion quat = new Quaternion(1, 0, 0, 0);
 
+// Gravity, Euler angles, and Yaw/Pitch/Roll angles variables
 float[] gravity = new float[3];
 float[] euler = new float[3];
 float[] ypr = new float[3];
 
+// Current X and Y position variables
+float xPosition = 0;
+float yPosition = 0;
+
+// Adjust the size of the sphere
+float sphereSize = 15;  
+
+// Previous X and Y position variables for path drawing
+float prevX = 0;
+float prevY = 0;
+
 void setup() {
-    // 300px square viewport using OpenGL rendering
+    // Set up the canvas size with OpenGL rendering
     size(600, 600, OPENGL);
+
+    // Initialize ToxiclibsSupport for 3D graphics
     gfx = new ToxiclibsSupport(this);
 
-    // setup lights and antialiasing
+    // Enable lights and smooth rendering
     lights();
     smooth();
-  
-    // display serial port list for debugging/clarity
-    //println(Serial.list());
 
-    // get the first available port (use EITHER this OR the specific port code below)
-    //String portName = Serial.list()[0];
-    
-    // get a specific serial port (use EITHER this OR the first-available code above)
+    // Set the serial port name
     String portName = "COM4";
-    
-    // open the serial port
+
+    // Initialize the serial port
     port = new Serial(this, portName, 115200);
-    
-    // send single character to trigger DMP init/start
-    // (expected by MPU6050_DMP6 example Arduino sketch)
+
+    // Trigger DMP initialization in ESP32
     port.write('r');
 }
 
 void draw() {
+    // Check if it's time to resend the initialization trigger
     if (millis() - interval > 1000) {
-        // resend single character to trigger DMP init/start
-        // in case the MPU is halted/reset while applet is running
         port.write('r');
         interval = millis();
     }
-    
-    // black background
+
+    // Set the background color
     background(40);
-    
-    // translate everything to the middle of the viewport
+
+    // Translate everything to the middle of the viewport
     pushMatrix();
-    translate(width/2, height/2);
+    translate(width/2 + xPosition/10, height/2 - yPosition/10);
 
-    // 3-step rotation from yaw/pitch/roll angles (gimbal lock!)
-    // ...and other weirdness I haven't figured out yet
-    //rotateY(-ypr[0]);
-    //rotateZ(-ypr[1]);
-    //rotateX(-ypr[2]);
-
-    // toxiclibs direct angle/axis rotation from quaternion (NO gimbal lock!)
-    // (axis order [1, 3, 2] and inversion [-1, +1, +1] is a consequence of
-    // different coordinate system orientation assumptions between Processing
-    // and InvenSense DMP)
+    // Get axis and angle from quaternion and apply rotation
     float[] axis = quat.toAxisAngle();
     rotate(axis[0], -axis[1], axis[3], axis[2]);
+
+    // Set the length of the bars
     float barLength = 200;
-    // draw main body in red
-    //fill(0, 255,255, 150);
-    //box(15, -15, 200);
     
-    //Draw X-axis bar starting from the origin
-    fill(0, 255, 255, 200); // Red color
+    // Draw a red spherical object
+    fill(255, 182, 193, 200);
     pushMatrix();
-    translate(-100, 0, 0); // Translate along X-axis by half the bar length
-    box(barLength, 10, 10); // X-axis is 200 units long
+    //translate(xPosition, -yPosition, 0);  // Adjust the translation based on your needs
+    translate(20, -20, 0);  // Adjust the translation based on your needs
+    box(15, 15, 15);
     popMatrix();
     
-    // Draw Y-axis bar starting from the origin
-    fill(255, 255, 0, 200); // Green color
+    // Draw X-axis bar in red
+    fill(0, 255, 255, 200);
     pushMatrix();
-    rotateZ(HALF_PI); // Rotate 90 degrees to align with Y-axis
-    translate(barLength / 2, 0, 0); // Translate along Y-axis by half the bar length
-    box(barLength, 10, 10); // Y-axis is 200 units long
-    popMatrix();
-    
-    // Draw Z-axis bar starting from the origin
-    fill(255, 255, 255, 200); // Blue color
-    pushMatrix();
-    rotateY(HALF_PI); // Rotate 90 degrees to align with Z-axis
-    translate(barLength / 2, 0, 0); // Translate along Z-axis by half the bar length
-    box(barLength, 10, 10); // Z-axis is 200 units long
-    // Draw Z label at the end of the bar
-    translate(barLength / 2 + 20, 0, 0); // Translate further along Z-axis
-    fill(255);
-    textAlign(LEFT, CENTER);
-    textSize(24);
-    text("Z", 0, 0); // Label for Z-axis
+    translate(100, 0, 0);
+    box(barLength, 10, 10);
     popMatrix();
 
-    // Draw labels for X and Y axes
-    fill(255);
-    textAlign(CENTER, CENTER);
-    textSize(24);
-    text("X", -220, 0); // Label for X-axis
-    text("Y", 0, barLength + 20); // Label for Y-axis
-    //popMatrix();
-/*
-  //Draw X-axis bar starting from the origin
-    fill(0, 255, 255, 200); // Red color
+    // Draw Y-axis bar in green
+    fill(255, 255, 0, 200);
     pushMatrix();
-    translate(-(temp*4/2), 0, 0); // Translate along X-axis by half the bar length
-    box(temp*4, 10, 10); // X-axis is 200 units long
-    popMatrix();
-    
-    // Draw Y-axis bar starting from the origin
-    fill(255, 255, 0, 200); // Green color
-    pushMatrix();
-    rotateZ(HALF_PI); // Rotate 90 degrees to align with Y-axis
-    translate(temp*4 / 2, 0, 0); // Translate along Y-axis by half the bar length
-    box(temp*4, 10, 10); // Y-axis is 200 units long
-    popMatrix();
-    
-    // Draw Z-axis bar starting from the origin
-    fill(255, 255, 255, 200); // Blue color
-    pushMatrix();
-    rotateY(HALF_PI); // Rotate 90 degrees to align with Z-axis
-    translate(temp*4 / 2, 0, 0); // Translate along Z-axis by half the bar length
-    box(temp*4, 10, 10); // Z-axis is 200 units long
-    // Draw Z label at the end of the bar
-    translate(temp / 2 + 20, 0, 0); // Translate further along Z-axis
-    fill(255);
-    textAlign(LEFT, CENTER);
-    textSize(24);
-    text("Z", 0, 0); // Label for Z-axis
+    rotateZ(HALF_PI);
+    translate(-barLength / 2, 0, 0);
+    box(barLength, 10, 10);
     popMatrix();
 
-    // Draw labels for X and Y axes
-    fill(255);
-    textAlign(CENTER, CENTER);
-    textSize(24);
-    text("X", -220, 0); // Label for X-axis
-    text("Y", 0,temp + 20); // Label for Y-axis
-    //popMatrix();*/
-    //Value of distance
-    //pushMatrix();
+    // Display the distance text
     fill(255);
     textAlign(LEFT, TOP);
     textSize(48);
-    text(temp, -300, -300); // Label for Distance
+    text("Distance: " + temp, 300, -300);
     popMatrix();
-    // draw front-facing tip in blue
-    //fill(255, 255, 0, 200);
-    //pushMatrix();
-    //translate(0, 0, -120);
-    //rotateX(PI/2);
-    //drawCylinder(0, 20, 20, 8);
-    //popMatrix();
-    
-    // draw wings and tail fin in green
-    //fill(0, 255, 0, 200);
-    //beginShape(TRIANGLES);
-    //vertex(-100,  2, 30); vertex(0,  2, -80); vertex(100,  2, 30);  // wing top layer
-    //vertex(-100, -2, 30); vertex(0, -2, -80); vertex(100, -2, 30);  // wing bottom layer
-    //vertex(-2, 0, 98); vertex(-2, -30, 98); vertex(-2, 0, 70);  // tail left layer
-    //vertex( 2, 0, 98); vertex( 2, -30, 98); vertex( 2, 0, 70);  // tail right layer
-    //endShape();
-    //beginShape(QUADS);
-    //vertex(-100, 2, 30); vertex(-100, -2, 30); vertex(  0, -2, -80); vertex(  0, 2, -80);
-    //vertex( 100, 2, 30); vertex( 100, -2, 30); vertex(  0, -2, -80); vertex(  0, 2, -80);
-    //vertex(-100, 2, 30); vertex(-100, -2, 30); vertex(100, -2,  30); vertex(100, 2,  30);
-    //vertex(-2,   0, 98); vertex(2,   0, 98); vertex(2, -30, 98); vertex(-2, -30, 98);
-    //vertex(-2,   0, 98); vertex(2,   0, 98); vertex(2,   0, 70); vertex(-2,   0, 70);
-    //vertex(-2, -30, 98); vertex(2, -30, 98); vertex(2,   0, 70); vertex(-2,   0, 70);
-    //endShape();
-    
-    //popMatrix();
+
+    // Draw the path
+    if (frameCount > 22) 
+    {
+        stroke(255);
+        line(prevX, prevY, width/2 + xPosition, height/2 - yPosition);
+    }
+
+    // Update previous position
+    prevX = width/2 + xPosition;
+    prevY = height/2 - yPosition;
 }
 
 void serialEvent(Serial port) {
+    // Update the interval time
     interval = millis();
+
+    // Check for available bytes in the serial port
     while (port.available() > 0) {
+        // Read a byte from the serial port
         int ch = port.read();
 
-        if (synced == 0 && ch != '$') return;   // initial synchronization - also used to resync/realign if needed
+        // Initial synchronization check
+        if (synced == 0 && ch != '$') return;
         synced = 1;
-        //print ((char)ch);
 
+        // Check for synchronization bytes and positions
         if ((serialCount == 1 && ch != 2)
             || (serialCount == 16 && ch != '\r')
             || (serialCount == 17 && ch != '\n'))  {
@@ -208,50 +145,35 @@ void serialEvent(Serial port) {
             return;
         }
 
+        // Process teapot packet bytes
         if (serialCount > 0 || ch == '$') {
             teapotPacket[serialCount++] = (char)ch;
+            
+            // If a full packet is received
             if (serialCount == 18) {
-                serialCount = 0; // restart packet byte position
-                
-                // get quaternion from data packet
+                serialCount = 0;
+
+                // Extract quaternion values from the teapot packet
                 q[0] = ((teapotPacket[2] << 8) | teapotPacket[3]) / 16384.0f;
                 q[1] = ((teapotPacket[4] << 8) | teapotPacket[5]) / 16384.0f;
                 q[2] = ((teapotPacket[6] << 8) | teapotPacket[7]) / 16384.0f;
                 q[3] = ((teapotPacket[8] << 8) | teapotPacket[9]) / 16384.0f;
+
+                // Normalize quaternion values if necessary
                 for (int i = 0; i < 4; i++) if (q[i] >= 2) q[i] = -4 + q[i];
-                
-                // set our toxilibs quaternion to new data
+
+                // Set the Toxiclibs quaternion to new data
                 quat.set(q[0], q[1], q[2], q[3]);
+
+                // Extract distance value from the teapot packet
                 temp = Float.intBitsToFloat((teapotPacket[10]) | (teapotPacket[11] << 8) | (teapotPacket[12] << 16) |(teapotPacket[13] << 24));
-                //float reconstructedFloatValue = Float.intBitsToFloat(temp);
+
+                // Print distance value for debugging
                 println(temp);
-                //for(int i=10;i<14;i++)
-                //{
-                //  println((int)teapotPacket[i]);  
-                //}
-                /*
-                // below calculations unnecessary for orientation only using toxilibs
-                
-                // calculate gravity vector
-                gravity[0] = 2 * (q[1]*q[3] - q[0]*q[2]);
-                gravity[1] = 2 * (q[0]*q[1] + q[2]*q[3]);
-                gravity[2] = q[0]*q[0] - q[1]*q[1] - q[2]*q[2] + q[3]*q[3];
-    
-                // calculate Euler angles
-                euler[0] = atan2(2*q[1]*q[2] - 2*q[0]*q[3], 2*q[0]*q[0] + 2*q[1]*q[1] - 1);
-                euler[1] = -asin(2*q[1]*q[3] + 2*q[0]*q[2]);
-                euler[2] = atan2(2*q[2]*q[3] - 2*q[0]*q[1], 2*q[0]*q[0] + 2*q[3]*q[3] - 1);
-    
-                // calculate yaw/pitch/roll angles
-                ypr[0] = atan2(2*q[1]*q[2] - 2*q[0]*q[3], 2*q[0]*q[0] + 2*q[1]*q[1] - 1);
-                ypr[1] = atan(gravity[0] / sqrt(gravity[1]*gravity[1] + gravity[2]*gravity[2]));
-                ypr[2] = atan(gravity[1] / sqrt(gravity[0]*gravity[0] + gravity[2]*gravity[2]));
-    
-                // output various components for debugging
-                //println("q:\t" + round(q[0]*100.0f)/100.0f + "\t" + round(q[1]*100.0f)/100.0f + "\t" + round(q[2]*100.0f)/100.0f + "\t" + round(q[3]*100.0f)/100.0f);
-                //println("euler:\t" + euler[0]*180.0f/PI + "\t" + euler[1]*180.0f/PI + "\t" + euler[2]*180.0f/PI);
-                //println("ypr:\t" + ypr[0]*180.0f/PI + "\t" + ypr[1]*180.0f/PI + "\t" + ypr[2]*180.0f/PI);
-                */
+
+                // Update the current position based on the distance and orientation
+                xPosition += cos(radians(ypr[0])) * temp;
+                yPosition += sin(radians(ypr[0])) * temp;
             }
         }
     }
