@@ -39,6 +39,9 @@ float sphereSize = 15;
 float prevX = 0;
 float prevY = 0;
 
+// List to store positions for drawing the path
+ArrayList<PVector> path = new ArrayList<PVector>();
+
 void setup() {
     // Set up the canvas size with OpenGL rendering
     size(600, 600, OPENGL);
@@ -72,7 +75,7 @@ void draw() {
 
     // Translate everything to the middle of the viewport
     pushMatrix();
-    translate(width/2 + xPosition/10, height/2 - yPosition/10);
+    translate(10 , height-10);
 
     // Get axis and angle from quaternion and apply rotation
     float[] axis = quat.toAxisAngle();
@@ -85,7 +88,7 @@ void draw() {
     fill(255, 182, 193, 200);
     pushMatrix();
     //translate(xPosition, -yPosition, 0);  // Adjust the translation based on your needs
-    translate(20, -20, 0);  // Adjust the translation based on your needs
+    translate(20 + xPosition, -20-yPosition, 0);  // Adjust the translation based on your needs
     box(15, 15, 15);
     popMatrix();
     
@@ -107,7 +110,7 @@ void draw() {
     // Display the distance text
     fill(255);
     textAlign(LEFT, TOP);
-    textSize(48);
+    textSize(20);
     text("Distance: " + temp, 300, -300);
     popMatrix();
 
@@ -117,10 +120,24 @@ void draw() {
         stroke(255);
         line(prevX, prevY, width/2 + xPosition, height/2 - yPosition);
     }
-
+    // Draw the path
+      drawPath();
     // Update previous position
     prevX = width/2 + xPosition;
     prevY = height/2 - yPosition;
+}
+
+void drawPath() 
+{
+    // Draw the path using lines connecting consecutive positions
+    stroke(255);
+    for (int i = 1; i < path.size(); i++) {
+        float x1 = path.get(i-1).x;
+        float y1 = path.get(i-1).y;
+        float x2 = path.get(i).x;
+        float y2 = path.get(i).y;
+        line(x1, y1, x2, y2);
+    }
 }
 
 void serialEvent(Serial port) {
@@ -167,13 +184,19 @@ void serialEvent(Serial port) {
 
                 // Extract distance value from the teapot packet
                 temp = Float.intBitsToFloat((teapotPacket[10]) | (teapotPacket[11] << 8) | (teapotPacket[12] << 16) |(teapotPacket[13] << 24));
-
+                path.add(new PVector(15+ xPosition, height - yPosition-20));
                 // Print distance value for debugging
                 println(temp);
-
                 // Update the current position based on the distance and orientation
-                xPosition += cos(radians(ypr[0])) * temp;
-                yPosition += sin(radians(ypr[0])) * temp;
+                //xPosition += cos(radians(ypr[0])) * temp;
+                //yPosition += sin(radians(ypr[0])) * temp;
+                
+                xPosition +=5;
+                delay(1000);
+                if (100 < xPosition && xPosition < 150) {
+                    yPosition += 50;
+                    delay(1000);
+                }
             }
         }
     }
