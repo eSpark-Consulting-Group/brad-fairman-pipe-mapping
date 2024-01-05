@@ -31,7 +31,7 @@ float[] ypr = new float[3];
 // Current X and Y position variables
 float xPosition = 0;
 float yPosition = 0;
-
+float zPosition = 0;
 // Adjust the size of the sphere
 float sphereSize = 15;  
 
@@ -77,18 +77,19 @@ void draw() {
     pushMatrix();
     translate(10 , height-10);
 
-    // Get axis and angle from quaternion and apply rotation
-    float[] axis = quat.toAxisAngle();
-    rotate(axis[0], -axis[1], axis[3], axis[2]);
+    
 
     // Set the length of the bars
     float barLength = 200;
     
-    // Draw a red spherical object
+    // Draw a red saquar object
     fill(255, 182, 193, 200);
     pushMatrix();
     //translate(xPosition, -yPosition, 0);  // Adjust the translation based on your needs
     translate(20 + xPosition, -20-yPosition, 0);  // Adjust the translation based on your needs
+    // Get axis and angle from quaternion and apply rotation
+    float[] axis = quat.toAxisAngle();
+    rotate(axis[0], -axis[1], axis[3], axis[2]);
     box(15, 15, 15);
     popMatrix();
     
@@ -113,15 +114,16 @@ void draw() {
     textSize(20);
     text("Distance: " + temp, 300, -300);
     popMatrix();
-
-    // Draw the path
-    if (frameCount > 22) 
-    {
-        stroke(255);
-        line(prevX, prevY, width/2 + xPosition, height/2 - yPosition);
-    }
-    // Draw the path
-      drawPath();
+    drawPath();
+      
+      // Draw the line with the starting point sticking to its position
+    float[] lineAxis = quat.toAxisAngle();
+    pushMatrix();
+    translate(width/2 + xPosition, height/2 - yPosition);
+    rotate(lineAxis[0], -lineAxis[1], lineAxis[3], lineAxis[2]);
+    stroke(255);
+    //line(0, 0, 50, 0); // Adjust the length of the line based on your needs
+    popMatrix();
     // Update previous position
     prevX = width/2 + xPosition;
     prevY = height/2 - yPosition;
@@ -132,10 +134,11 @@ void drawPath()
     // Draw the path using lines connecting consecutive positions
     stroke(255);
     for (int i = 1; i < path.size(); i++) {
-        float x1 = path.get(i-1).x;
-        float y1 = path.get(i-1).y;
+        float x1 = path.get(i - 1).x;
+        float y1 = path.get(i - 1).y;
         float x2 = path.get(i).x;
         float y2 = path.get(i).y;
+
         line(x1, y1, x2, y2);
     }
 }
@@ -181,23 +184,75 @@ void serialEvent(Serial port) {
 
                 // Set the Toxiclibs quaternion to new data
                 quat.set(q[0], q[1], q[2], q[3]);
-
+                float preDis = 0.0f;
                 // Extract distance value from the teapot packet
                 temp = Float.intBitsToFloat((teapotPacket[10]) | (teapotPacket[11] << 8) | (teapotPacket[12] << 16) |(teapotPacket[13] << 24));
                 path.add(new PVector(15+ xPosition, height - yPosition-20));
                 // Print distance value for debugging
                 println(temp);
-                // Update the current position based on the distance and orientation
-                //xPosition += cos(radians(ypr[0])) * temp;
-                //yPosition += sin(radians(ypr[0])) * temp;
                 
-                xPosition +=5;
-                delay(1000);
-                if (100 < xPosition && xPosition < 150) {
-                    yPosition += 50;
-                    delay(1000);
+                   // Calculate the rotation matrix from the quaternion
+                float[][] rotationMatrix = calculateRotationMatrix(quat);
+
+                 // Extract the rotation angles
+                float pitch = degrees(atan2(rotationMatrix[2][1], rotationMatrix[2][2]));
+                float roll = degrees(atan2(-rotationMatrix[2][0], sqrt(rotationMatrix[2][1]*rotationMatrix[2][1] + rotationMatrix[2][2]*rotationMatrix[2][2])));
+                float yaw = degrees(atan2(rotationMatrix[1][0], rotationMatrix[0][0]));
+                float prevTemp = 0.0f;
+                // Check the orientation of the block//temp/10.0f
+                if (abs(roll) > abs(pitch) && abs(roll) > abs(yaw)) {
+                    println("Block is along X-axis");
+                    // Perform actions for X-axis orientation
+                    xPosition +=(-prevTemp + temp)/10 + 10;
+                    println("preDis%d ",preDis);
+                } else if (abs(pitch) > abs(roll) && abs(pitch) > abs(yaw)) {
+                    println("Block is along Y-axis");
+                    // Perform actions for Y-axis orientation
+                    yPosition += (-prevTemp + temp)/10 + 10;
+                    
+                } else  {
+                    println("Block is along Z-axis");
+                    // Perform actions for Z-axis orientation
+                    // Add your logic for Z-axis orientation if needed
+                     zPosition += 5;
+                     
                 }
+                prevTemp = temp;
+                
             }
         }
     }
+}
+
+float[][] calculateRotationMatrix(Quaternion quaternion) {
+    float[][] rotationMatrix = new float[3][3];
+
+    float sqw = quaternion.w * quaternion.w;
+    float sqx = quaternion.x * quaternion.x;
+    float sqy = quaternion.y * quaternion.y;
+    float sqz = quaternion.z * quaternion.z;
+
+    // Normalization factor
+    float invs = 1 / (sqx + sqy + sqz + sqw);
+
+    rotationMatrix[0][0] = (sqx - sqy - sqz + sqw) * invs;
+    rotationMatrix[1][1] = (-sqx + sqy - sqz + sqw) * invs;
+    rotationMatrix[2][2] = (-sqx - sqy + sqz + sqw) * invs;
+
+    float tmp1 = quaternion.x * quaternion.y;
+    float tmp2 = quaternion.z * quaternion.w;
+    rotationMatrix[0][1] = 2.0f * (tmp1 + tmp2) * invs;
+    rotationMatrix[1][0] = 2.0f * (tmp1 - tmp2) * invs;
+
+    tmp1 = quaternion.x * quaternion.z;
+    tmp2 = quaternion.y * quaternion.w;
+    rotationMatrix[0][2] = 2.0f * (tmp1 - tmp2) * invs;
+    rotationMatrix[2][0] = 2.0f * (tmp1 + tmp2) * invs;
+
+    tmp1 = quaternion.y * quaternion.z;
+    tmp2 = quaternion.x * quaternion.w;
+    rotationMatrix[1][2] = 2.0f * (tmp1 + tmp2) * invs;
+    rotationMatrix[2][1] = 2.0f * (tmp1 - tmp2) * invs;
+
+    return rotationMatrix;
 }
