@@ -1,0 +1,398 @@
+// Import Toxiclibs library and Processing serial library
+import processing.serial.*;
+import processing.opengl.*;
+import toxi.geom.*;
+import toxi.processing.*;
+
+// Create a ToxiclibsSupport object for 3D graphics
+ToxiclibsSupport gfx;
+
+// Serial port for communication with ESP32
+Serial port;
+
+// Teapot packet received from ESP32
+char[] teapotPacket = new char[18];
+
+// Variables to keep track of current packet byte position, synchronization, and interval
+int serialCount = 0;
+int synced = 0;
+int interval = 0;
+
+// Quaternion variables for orientation tracking
+float[] q = new float[4];
+float temp;
+Quaternion quat = new Quaternion(1, 0, 0, 0);
+
+// Gravity, Euler angles, and Yaw/Pitch/Roll angles variables
+float[] gravity = new float[3];
+float[] euler = new float[3];
+float[] ypr = new float[3];
+
+// Current X and Y position variables
+float xPosition = 0;
+float yPosition = 0;
+float zPosition = 0;
+// Adjust the size of the sphere
+float sphereSize = 15;  
+
+// Previous X and Y position variables for path drawing
+float prevX = 0;
+float prevY = 0;
+
+// List to store positions for drawing the path
+ArrayList<PVector> path = new ArrayList<PVector>();
+
+
+void setup() {
+    // Set up the canvas size with OpenGL rendering
+    size(600, 600, OPENGL);
+
+    // Initialize ToxiclibsSupport for 3D graphics
+    gfx = new ToxiclibsSupport(this);
+
+    // Enable lights and smooth rendering
+    lights();
+    smooth();
+
+    // Set the serial port name
+    String portName = "COM4";
+
+    // Initialize the serial port
+    port = new Serial(this, portName, 115200);
+
+    // Trigger DMP initialization in ESP32
+    port.write('r');
+}
+
+float prevTemp = 0.0f;
+
+void draw() {
+    // Check if it's time to resend the initialization trigger
+    if (millis() - interval > 1000) {
+        port.write('r');
+        interval = millis();
+    }
+
+    // Set the background color
+    background(40);
+
+    // Translate everything to the middle of the viewport
+    pushMatrix();
+    //translate(10 , height-10);
+      translate(width/2 , height/2);
+    
+
+    // Set the length of the bars
+    float barLength = 200;
+    
+    // Draw a red saquar object
+    fill(255, 182, 193, 200);
+    pushMatrix();
+    //translate(xPosition, -yPosition, 0);  // Adjust the translation based on your needs
+    translate(20 + xPosition, -20-yPosition, 0);  // Adjust the translation based on your needs
+    // Get axis and angle from quaternion and apply rotation
+    float[] axis = quat.toAxisAngle();
+    rotate(axis[0], -axis[1], axis[3], axis[2]);
+    box(15, 15, 15);
+    popMatrix();
+    
+    // Draw X-axis bar in red
+    fill(0, 255, 255, 200);
+    pushMatrix();
+    translate(100, 0, 0);
+    box(barLength, 10, 10);
+    popMatrix();
+
+    // Draw Y-axis bar in green
+    fill(255, 255, 0, 200);
+    pushMatrix();
+    rotateZ(HALF_PI);
+    translate(-barLength / 2, 0, 0);
+    box(barLength, 10, 10);
+    popMatrix();
+
+
+    
+    // Display the distance text
+    fill(255);
+    textAlign(RIGHT, TOP);
+    textSize(20);
+    text("Distance: " + temp, 255, -280);
+    popMatrix();
+    drawPath();
+      
+     // Draw the line with the starting point sticking to its position
+    float[] lineAxis = quat.toAxisAngle();
+    pushMatrix();
+    translate(width/2 + xPosition, height/2 - yPosition);
+    rotate(lineAxis[0], -lineAxis[1], lineAxis[3], lineAxis[2]);
+    stroke(255);
+    //line(0, 0, 50, 0); // Adjust the length of the line based on your needs
+    popMatrix();
+    // Update previous position
+    prevX = width/2 + xPosition;
+    prevY = height/2 - yPosition;
+    
+    
+    //Calculate 3D coordinates of the block
+    PVector blockCoordinates = calculateBlockCoordinates(xPosition, yPosition);
+    // Display the 3D coordinates
+    fill(255);
+    textAlign(LEFT, TOP);
+    textSize(20);
+    text("Block Coordinates: (" + nf(blockCoordinates.x, 0, 2) + ", " + nf(blockCoordinates.y, 0, 2) + ", " + nf(blockCoordinates.z, 0, 2) + ")", 20, 20);
+    
+    
+    
+   
+}
+PVector calculateBlockCoordinates(float xPosition, float yPosition) {
+    // Set the height of the block above the XY plane
+    float zPosition = 0;
+
+    // Use quaternion to calculate the rotation matrix
+    float[][] rotationMatrix = calculateRotationMatrix(quat);
+
+    // Apply the rotation to the block's local coordinates
+    float localX = 15; // Adjust based on the size of the block
+    float localY = 15; // Adjust based on the size of the block
+    float localZ = 15; // Adjust based on the size of the block
+
+    float globalX = rotationMatrix[0][0] * localX + rotationMatrix[1][0] * localY + rotationMatrix[2][0] * localZ;
+    float globalY = rotationMatrix[0][1] * localX + rotationMatrix[1][1] * localY + rotationMatrix[2][1] * localZ;
+    float globalZ = rotationMatrix[0][2] * localX + rotationMatrix[1][2] * localY + rotationMatrix[2][2] * localZ;
+
+    // Translate to the block's position in the global coordinates
+    float finalX = xPosition + globalX;
+    float finalY = yPosition + globalY;
+    float finalZ = zPosition + globalZ;
+
+    return new PVector(finalX, finalY, finalZ);
+}
+
+
+void drawPath() 
+{
+    // Draw the path using lines connecting consecutive positions
+    stroke(255);
+    for (int i = 1; i < path.size(); i++) {
+        float x1 = path.get(i - 1).x;
+        float y1 = path.get(i - 1).y;
+        float x2 = path.get(i).x;
+        float y2 = path.get(i).y;
+
+        line(x1, y1, x2, y2);
+    }
+}
+
+void serialEvent(Serial port) {
+    // Update the interval time
+    interval = millis();
+
+    // Check for available bytes in the serial port
+    while (port.available() > 0) {
+        // Read a byte from the serial port
+        int ch = port.read();
+
+        // Initial synchronization check
+        if (synced == 0 && ch != '$') return;
+        synced = 1;
+
+        // Check for synchronization bytes and positions
+        if ((serialCount == 1 && ch != 2)
+            || (serialCount == 16 && ch != '\r')
+            || (serialCount == 17 && ch != '\n'))  {
+            serialCount = 0;
+            synced = 0;
+            return;
+        }
+
+        // Process teapot packet bytes
+        if (serialCount > 0 || ch == '$') {
+            teapotPacket[serialCount++] = (char)ch;
+            
+            // If a full packet is received
+            if (serialCount == 18) {
+                serialCount = 0;
+
+                // Extract quaternion values from the teapot packet
+                q[0] = ((teapotPacket[2] << 8) | teapotPacket[3]) / 16384.0f;
+                q[1] = ((teapotPacket[4] << 8) | teapotPacket[5]) / 16384.0f;
+                q[2] = ((teapotPacket[6] << 8) | teapotPacket[7]) / 16384.0f;
+                q[3] = ((teapotPacket[8] << 8) | teapotPacket[9]) / 16384.0f;
+
+                // Normalize quaternion values if necessary
+                for (int i = 0; i < 4; i++) if (q[i] >= 2) q[i] = -4 + q[i];
+
+                // Set the Toxiclibs quaternion to new data
+                quat.set(q[0], q[1], q[2], q[3]);
+                //float preDis = 0.0f;
+                // Extract distance value from the teapot packet
+                    // Extract distance value from the teapot packet
+                temp = Float.intBitsToFloat((teapotPacket[10]) | (teapotPacket[11] << 8) | (teapotPacket[12] << 16) | (teapotPacket[13] << 24));
+                //temp = (int)(temp/10.0);
+                //temp = temp/10.0;
+                path.add(new PVector(15 + xPosition, height - yPosition - 20));
+                // Print distance value for debugging
+                println(temp);
+            
+                // Calculate the rotation matrix from the quaternion
+                float[][] rotationMatrix = calculateRotationMatrix(quat);
+            
+                // Extract the rotation angles
+                float pitch = degrees(atan2(rotationMatrix[2][1], rotationMatrix[2][2]));
+                float roll = degrees(atan2(-rotationMatrix[2][0], sqrt(rotationMatrix[2][1] * rotationMatrix[2][1] + rotationMatrix[2][2] * rotationMatrix[2][2])));
+                float yaw = degrees(atan2(rotationMatrix[1][0], rotationMatrix[0][0]));
+                // declear x , y and z componenets
+                float xComponent;
+                float yComponent;
+                float zComponent;
+                
+                // Calculate the components along each axis based on orientation angles
+                 xComponent = temp * cos(radians(yaw)) * cos(radians(pitch));
+                 yComponent = temp * sin(radians(yaw)) * cos(radians(pitch));
+                 zComponent = temp * sin(radians(pitch));
+                 // Update X, Y, and Z positions
+                //xPosition = xComponent;
+                //yPosition = yComponent;
+                //zPosition = zComponent;
+                //// Display the updated positions
+                //println("X Position: " + xPosition);
+                //println("Y Position: " + yPosition);
+                //println("Z Position: " + zPosition);
+                
+                float xtempDifference = xComponent - prevTemp;
+                float ytempDifference = yComponent - prevTemp;
+                float ztempDifference = zComponent - prevTemp;
+                //println("Difference %d\n",tempDifference);
+                 // Calculate 3D coordinates of the block
+                float[] axis = quat.toAxisAngle();
+                
+                
+                
+                
+                //tempDifference =0.0;
+                // Check the orientation of the block
+                 if (abs(roll) > abs(pitch) && abs(roll) > abs(yaw)) 
+                {
+                  println("Block is along X-axis");
+                    // Perform actions for X-axis orientation
+               
+                    if (tempDifference == 0) 
+                    {
+                        // Stop
+                    } 
+                    else if (tempDifference < 0) 
+                    {
+                        // Move forward
+                        xPosition = xComponent + abs(tempDifference);
+                    } 
+                    else 
+                    {
+                        // Move backward
+                        xPosition =xComponent - abs(tempDifference);
+        
+                    }
+                   
+                } 
+                else if (abs(pitch) > abs(roll) && abs(pitch) > abs(yaw)) 
+                { 
+                  println("Block is along Y-axis");
+                    // Perform actions for Y-axis orientation
+                    
+                    if (tempDifference == 0) 
+                    {
+                        // Stop
+                    } else if (tempDifference < 0) 
+                    {
+                        // Move forward
+                        yPosition =yComponent + abs(tempDifference) ;
+                    } 
+                    else 
+                    {
+                        // Move backward
+                        yPosition =yComponent - abs(tempDifference);
+                    }
+                    
+                }
+                else if (abs(yaw) > abs(roll) && abs(yaw) > abs(pitch)) 
+                 {
+                    println("Block is along Z-axis");
+                    // Perform actions for Z-axis orientation
+                  
+                    // Add your logic for Z-axis orientation if needed
+                    // For example, you can move along the Z-axis
+                    if (tempDifference == 0) {
+                      // Stop
+                    } else if (tempDifference < 0) {
+                      // Move forward along the Z-axis
+                      zPosition = zComponent + abs(tempDifference);
+                    } else {
+                      // Move backward along the Z-axis
+                      zPosition = zComponent - abs(tempDifference);
+                    }
+                  }
+                  else 
+                  {
+                    println("Block is in the X-Y plane");
+                    // Perform actions for X-Y plane orientation
+                  
+                    // Add your logic for X-Y plane orientation if needed
+                    // For example, you can move along both X and Y axes
+                    if (tempDifference == 0) {
+                      // Stop
+                    } else if (tempDifference < 0) {
+                      // Move forward along both X and Y axes
+                      xPosition = xPosition + abs(tempDifference);
+                      yPosition = yPosition + abs(tempDifference);
+                    } else {
+                      // Move backward along both X and Y axes
+                      xPosition = xPosition - abs(tempDifference);
+                      yPosition = yPosition - abs(tempDifference);
+                    }
+                  }
+
+            
+                // Update previous temperature
+                prevTemp = temp;
+
+                
+                delay(50);
+            }
+        }
+    }
+}
+
+float[][] calculateRotationMatrix(Quaternion quaternion) 
+{
+    float[][] rotationMatrix = new float[3][3];
+
+    float sqw = quaternion.w * quaternion.w;
+    float sqx = quaternion.x * quaternion.x;
+    float sqy = quaternion.y * quaternion.y;
+    float sqz = quaternion.z * quaternion.z;
+
+    // Normalization factor
+    float invs = 1 / (sqx + sqy + sqz + sqw);
+
+    rotationMatrix[0][0] = (sqx - sqy - sqz + sqw) * invs;
+    rotationMatrix[1][1] = (-sqx + sqy - sqz + sqw) * invs;
+    rotationMatrix[2][2] = (-sqx - sqy + sqz + sqw) * invs;
+
+    float tmp1 = quaternion.x * quaternion.y;
+    float tmp2 = quaternion.z * quaternion.w;
+    rotationMatrix[0][1] = 2.0f * (tmp1 + tmp2) * invs;
+    rotationMatrix[1][0] = 2.0f * (tmp1 - tmp2) * invs;
+
+    tmp1 = quaternion.x * quaternion.z;
+    tmp2 = quaternion.y * quaternion.w;
+    rotationMatrix[0][2] = 2.0f * (tmp1 - tmp2) * invs;
+    rotationMatrix[2][0] = 2.0f * (tmp1 + tmp2) * invs;
+
+    tmp1 = quaternion.y * quaternion.z;
+    tmp2 = quaternion.x * quaternion.w;
+    rotationMatrix[1][2] = 2.0f * (tmp1 + tmp2) * invs;
+    rotationMatrix[2][1] = 2.0f * (tmp1 - tmp2) * invs;
+
+    return rotationMatrix;
+}

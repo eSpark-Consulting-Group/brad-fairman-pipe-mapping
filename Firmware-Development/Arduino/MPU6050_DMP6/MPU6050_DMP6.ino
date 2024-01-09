@@ -18,7 +18,7 @@ uint8_t devStatus;      // return status after each device operation (0 = succes
 uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
 uint8_t fifoBuffer[64]; // FIFO storage buffer
 long duration;
-float distance = 00.0 ;
+float distance = 0.0 ;
 
 // packet structure for InvenSense teapot demo
 uint8_t teapotPacket[18] = { '$', 0x02, 0,0, 0,0, 0,0, 0,0, 0,0,0,0, 0x00, 0x00, '\r', '\n' };
@@ -77,7 +77,7 @@ void loop()
   // distance = (duration * SOUND_SPEED)/2.0;
 
   // Hardcoded values for distance in the sequence
-  if (millis() < 15000) 
+  if (millis() < 25000) 
   {
       distance--;
   }
@@ -87,11 +87,23 @@ void loop()
   }
   else if (millis() > 25000 && millis() <= 45000) 
    {
-      distance++;
+      distance --;
    } 
   else if (millis() > 45000 && millis() <= 49000) 
   {
-      distance;
+      distance = 4999;
+  }
+  else if (millis() > 49000 && millis() <= 59000) 
+  {
+      distance++;
+  }
+  else if (millis() > 60000 && millis() <= 70000) 
+  {
+      distance --;
+  }
+  else if (millis() > 80000 && millis() <= 90000) 
+  {
+      distance=0;
   }
   else 
   {

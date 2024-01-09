@@ -79,7 +79,7 @@ void draw() {
     // Translate everything to the middle of the viewport
     pushMatrix();
     //translate(10 , height-10);
-      translate(width/2 , height/2);
+    translate(width/2 , height/2);
     
 
     // Set the length of the bars
@@ -111,7 +111,6 @@ void draw() {
     box(barLength, 10, 10);
     popMatrix();
 
-
     
     // Display the distance text
     fill(255);
@@ -120,20 +119,7 @@ void draw() {
     text("Distance: " + temp, 255, -280);
     popMatrix();
     drawPath();
-      
-     // Draw the line with the starting point sticking to its position
-    float[] lineAxis = quat.toAxisAngle();
-    pushMatrix();
-    translate(width/2 + xPosition, height/2 - yPosition);
-    rotate(lineAxis[0], -lineAxis[1], lineAxis[3], lineAxis[2]);
-    stroke(255);
-    //line(0, 0, 50, 0); // Adjust the length of the line based on your needs
-    popMatrix();
-    // Update previous position
-    prevX = width/2 + xPosition;
-    prevY = height/2 - yPosition;
-    
-    
+  
     //Calculate 3D coordinates of the block
     PVector blockCoordinates = calculateBlockCoordinates(xPosition, yPosition);
     // Display the 3D coordinates
@@ -169,19 +155,20 @@ PVector calculateBlockCoordinates(float xPosition, float yPosition) {
 }
 
 
-void drawPath() 
-{
+void drawPath() {
     // Draw the path using lines connecting consecutive positions
     stroke(255);
+
     for (int i = 1; i < path.size(); i++) {
         float x1 = path.get(i - 1).x;
         float y1 = path.get(i - 1).y;
-        float x2 = path.get(i).x;
-        float y2 = path.get(i).y;
-
+        float x2 = path.get(i).x +5;
+        float y2 = path.get(i).y +5;
+        
         line(x1, y1, x2, y2);
     }
 }
+
 
 void serialEvent(Serial port) {
     // Update the interval time
@@ -230,7 +217,7 @@ void serialEvent(Serial port) {
                 temp = Float.intBitsToFloat((teapotPacket[10]) | (teapotPacket[11] << 8) | (teapotPacket[12] << 16) | (teapotPacket[13] << 24));
                 //temp = (int)(temp/10.0);
                 //temp = temp/10.0;
-                path.add(new PVector(15 + xPosition, height - yPosition - 20));
+                path.add(new PVector(width/2 + xPosition, height/2 - yPosition - 20));// line starting position 
                 // Print distance value for debugging
                 println(temp);
             
@@ -242,65 +229,159 @@ void serialEvent(Serial port) {
                 float roll = degrees(atan2(-rotationMatrix[2][0], sqrt(rotationMatrix[2][1] * rotationMatrix[2][1] + rotationMatrix[2][2] * rotationMatrix[2][2])));
                 float yaw = degrees(atan2(rotationMatrix[1][0], rotationMatrix[0][0]));
                 
+                //float xComponent = temp * cos(radians(yaw)) * cos(radians(pitch));
+                //xPosition = xComponent;
+                println("pitch", (pitch));
+                println("roll", abs(roll));
+                println("yaw", abs(yaw));
                 float tempDifference = temp - prevTemp;
                 println("Difference %d\n",tempDifference);
+                 //for greater step size at change of axis  
+                if (tempDifference > 10 || tempDifference < -10) 
+                {
+                  // Update previous temperature
+                  prevTemp = temp;
+                  tempDifference = temp - prevTemp;
+                }
                  // Calculate 3D coordinates of the block
                 float[] axis = quat.toAxisAngle();
                 //tempDifference =0.0;
+                
                 // Check the orientation of the block
-                 if (abs(roll) > abs(pitch) && abs(roll) > abs(yaw)) 
-                {
+              if (abs(roll) > abs(pitch) && abs(roll) > abs(yaw)) 
+              {
+                  println("Block is along Z-axis");
+                  if (tempDifference == 0) 
+                  {
+                      // Stop
+                  } else if (tempDifference < 0) 
+                  {
+                      // Move forward along the Z-axis
+                      zPosition = zPosition + abs(tempDifference);
+                  } 
+                  else 
+                  {
+                      // Move backward along the Z-axis
+                      zPosition = zPosition - abs(tempDifference);
+                  }
+              }
+              else if (abs(yaw) > abs(roll) && abs(yaw) > abs(pitch)) 
+              {
+                  println("Block is along X-axis");
                   
-                   
-                } 
-                else if (abs(pitch) > abs(roll) && abs(pitch) > abs(yaw)) 
-                { 
-                  println("Block is along Y-axis");
-                    // Perform actions for Y-axis orientation
-                    
-                    if (tempDifference == 0) 
-                    {
-                        // Stop
-                    } else if (tempDifference < 0) 
-                    {
-                        // Move forward
-                        yPosition =yPosition + abs(tempDifference) ;
-                    } 
-                    else 
-                    {
-                        // Move backward
-                        yPosition =yPosition - abs(tempDifference);
-                    }
-                    
-                } 
-                else 
-                {
-                   println("Block is along X-axis");
-                    // Perform actions for X-axis orientation
-               
-                    if (tempDifference == 0) 
-                    {
-                        // Stop
-                    } 
-                    else if (tempDifference < 0) 
-                    {
-                        // Move forward
-                        xPosition = xPosition + abs(tempDifference);
-                    } 
-                    else 
-                    {
-                        // Move backward
-                        xPosition =xPosition - abs(tempDifference);
-        
-                    }
+                  if (tempDifference == 0) 
+                  {
+                      // Stop
+                  } 
+                  else if (tempDifference < 0) 
+                  {
+                      // Move forward along the X-axis
+                      xPosition = xPosition + abs(tempDifference);
+                  } 
+                  else 
+                  {
+                      // Move backward along the X-axis
+                      xPosition = xPosition - abs(tempDifference);
+                  }
                   
-                //    println("Block is along Z-axis");
-                //    // Perform actions for Z-axis orientation
-                //    // Add your logic for Z-axis orientation if needed
-                //    zPosition += 5;
-                }
-            
-                // Update previous temperature
+              }
+              else if (abs(pitch) > abs(roll) && abs(pitch) > abs(yaw)) // for upward motionsin the x y plane
+              { 
+                  
+                  if (pitch <= -5 && pitch > -85 ) // Threshold for detecting both X and Y axes
+                  {
+                      println("Block is making a slope along both X and Y axes");
+                      // Update xPosition and yPosition accordingly
+                      //float slopeAngle = (atan2(rotationMatrix[0][1], rotationMatrix[2][1]));
+                      float slopeAngle = 0.0f ;
+                      //// Ensure the angle is in the range [0, pi/2]
+                      //if (slopeAngle < 0) {
+                      //    slopeAngle += PI;  // Add PI to bring it to the positive range
+                      //}
+                      if (pitch < -20 && pitch > -30)
+                          slopeAngle = 0.523599;
+                      if (pitch < -30 && pitch > -40)
+                          slopeAngle = 0.785398;
+                      if (pitch < -40 && pitch > -50)
+                          slopeAngle = 1.0472;
+                      if (pitch < -50 && pitch > -90)
+                          slopeAngle = 1.39626;
+  
+     
+                              
+                      //slopeAngle = constrain(slopeAngle, 0, PI/2);
+                      print("slop angle = ", slopeAngle);
+                      if (tempDifference == 0) 
+                      {
+                          // Stop
+                      } else if (tempDifference < 0) 
+                      {
+                          // Move forward along the Y-axis
+                        xPosition = xPosition + abs(tempDifference) * cos(slopeAngle);
+                        yPosition = yPosition + abs(tempDifference) * sin(slopeAngle);
+                      }
+                  }
+                 else if (pitch >= 5 && pitch < 110 )
+                      {
+                      println("Block is making a slope along both X and Y axes");
+                      // Update xPosition and yPosition accordingly
+                      //float slopeAngle = (atan2(rotationMatrix[0][1], rotationMatrix[2][1]));
+                      float slopeAngle = 0.0f ;
+                      //// Ensure the angle is in the range [0, pi/2]
+                      //if (slopeAngle < 0) {
+                      //    slopeAngle += PI;  // Add PI to bring it to the positive range
+                      //}
+                      if (abs(pitch) > 20 && abs(pitch) < 30)
+                          slopeAngle = -0.523599;
+                      if (abs(pitch) > 30 && abs(pitch) < 40)
+                          slopeAngle = -0.785398;
+                      if (abs(pitch) > 40 && abs(pitch) < 50)
+                          slopeAngle = -1.0472;
+                      if (abs(pitch) > 50 && abs(pitch) < 80)
+                          slopeAngle = -1.39626;
+                      if (abs(pitch) > 80 && abs(pitch) < 100)
+                          slopeAngle = -1.5708;
+                              
+                      //slopeAngle = constrain(slopeAngle, 0, PI/2);
+                      print("slop angle = ", slopeAngle);
+                      if (tempDifference == 0) 
+                      {
+                          // Stop
+                      } 
+                      else if (tempDifference < 0) 
+                       {
+                          // Move forward along the Y-axis
+                        xPosition = xPosition + abs(tempDifference) * cos(slopeAngle);
+                        yPosition = yPosition + abs(tempDifference) * sin(slopeAngle);
+                       }
+                    
+                      else 
+                      {
+                           // Move backward along the slope
+                        xPosition = xPosition - abs(tempDifference) * cos(slopeAngle);
+                        yPosition = yPosition - abs(tempDifference) * sin(slopeAngle);
+                      }
+                  } 
+                  else 
+                  {
+                    println("Block is along Y-axis");
+                  // Perform actions for Y-axis orientation
+                      if (tempDifference == 0) 
+                      {
+                          // Stop
+                      } else if (tempDifference < 0) 
+                      {
+                          // Move forward along the Y-axis
+                          yPosition = yPosition + abs(tempDifference);
+                      } 
+                      else 
+                      {
+                          // Move backward along the Y-axis
+                          yPosition = yPosition - abs(tempDifference);
+                      }
+                  }
+              } 
+              
                 prevTemp = temp;
 
                 
