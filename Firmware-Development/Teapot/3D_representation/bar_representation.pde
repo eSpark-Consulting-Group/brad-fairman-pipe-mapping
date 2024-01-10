@@ -32,6 +32,14 @@ float[] ypr = new float[3];
 float xPosition = 0;
 float yPosition = 0;
 float zPosition = 0;
+
+// Current X and Y position variables
+float xPositionInitial = 0;
+float yPositionInitial = 0;
+float zPositionInitial = 0;
+
+//
+float totalDistanceCovered = 0.0f;
 // Adjust the size of the sphere
 float sphereSize = 15;  
 
@@ -127,7 +135,12 @@ void draw() {
     textAlign(LEFT, TOP);
     textSize(20);
     text("Block Coordinates: (" + nf(blockCoordinates.x, 0, 2) + ", " + nf(blockCoordinates.y, 0, 2) + ", " + nf(blockCoordinates.z, 0, 2) + ")", 20, 20);
-    
+    //totalDistanceCovered
+    // Display the Total distance covered
+    fill(255);
+    textAlign(LEFT, TOP);
+    textSize(20);
+    text("Total Distance Covered: (" +totalDistanceCovered+ ")", 20, 40);
    
 }
 PVector calculateBlockCoordinates(float xPosition, float yPosition) {
@@ -223,7 +236,11 @@ void serialEvent(Serial port) {
             
                 // Calculate the rotation matrix from the quaternion
                 float[][] rotationMatrix = calculateRotationMatrix(quat);
-            
+
+                //println("Rotation Matrix:");
+                //for (int i = 0; i < 3; i++) {
+                //    println(rotationMatrix[i][0] + "\t" + rotationMatrix[i][1] + "\t" + rotationMatrix[i][2]);
+                //}
                 // Extract the rotation angles
                 float pitch = degrees(atan2(rotationMatrix[2][1], rotationMatrix[2][2]));
                 float roll = degrees(atan2(-rotationMatrix[2][0], sqrt(rotationMatrix[2][1] * rotationMatrix[2][1] + rotationMatrix[2][2] * rotationMatrix[2][2])));
@@ -231,9 +248,9 @@ void serialEvent(Serial port) {
                 
                 //float xComponent = temp * cos(radians(yaw)) * cos(radians(pitch));
                 //xPosition = xComponent;
-                println("pitch", (pitch));
-                println("roll", abs(roll));
-                println("yaw", abs(yaw));
+                //println("pitch", (pitch));
+                //println("roll", abs(roll));
+                //println("yaw", abs(yaw));
                 float tempDifference = temp - prevTemp;
                 println("Difference %d\n",tempDifference);
                  //for greater step size at change of axis  
@@ -277,113 +294,56 @@ void serialEvent(Serial port) {
                   {
                       // Move forward along the X-axis
                       xPosition = xPosition + abs(tempDifference);
+                      totalDistanceCovered += abs(tempDifference);
                   } 
                   else 
                   {
                       // Move backward along the X-axis
                       xPosition = xPosition - abs(tempDifference);
+                      totalDistanceCovered -= abs(tempDifference);
                   }
                   
               }
-              else if (abs(pitch) > abs(roll) && abs(pitch) > abs(yaw)) // for upward motionsin the x y plane
+              else if (abs(pitch) > abs(roll) && abs(pitch) > abs(yaw)) // for upward and downwards motions in the x y plane
               { 
                   
-                  if (pitch <= -5 && pitch > -85 ) // Threshold for detecting both X and Y axes
-                  {
-                      println("Block is making a slope along both X and Y axes");
-                      // Update xPosition and yPosition accordingly
-                      //float slopeAngle = (atan2(rotationMatrix[0][1], rotationMatrix[2][1]));
-                      float slopeAngle = 0.0f ;
-                      //// Ensure the angle is in the range [0, pi/2]
-                      //if (slopeAngle < 0) {
-                      //    slopeAngle += PI;  // Add PI to bring it to the positive range
-                      //}
-                      if (pitch < -20 && pitch > -30)
-                          slopeAngle = 0.523599;
-                      if (pitch < -30 && pitch > -40)
-                          slopeAngle = 0.785398;
-                      if (pitch < -40 && pitch > -50)
-                          slopeAngle = 1.0472;
-                      if (pitch < -50 && pitch > -90)
-                          slopeAngle = 1.39626;
-  
-     
-                              
-                      //slopeAngle = constrain(slopeAngle, 0, PI/2);
-                      print("slop angle = ", slopeAngle);
-                      if (tempDifference == 0) 
-                      {
-                          // Stop
-                      } else if (tempDifference < 0) 
-                      {
-                          // Move forward along the Y-axis
-                        xPosition = xPosition + abs(tempDifference) * cos(slopeAngle);
-                        yPosition = yPosition + abs(tempDifference) * sin(slopeAngle);
-                      }
-                  }
-                 else if (pitch >= 5 && pitch < 110 )
-                      {
-                      println("Block is making a slope along both X and Y axes");
-                      // Update xPosition and yPosition accordingly
-                      //float slopeAngle = (atan2(rotationMatrix[0][1], rotationMatrix[2][1]));
-                      float slopeAngle = 0.0f ;
-                      //// Ensure the angle is in the range [0, pi/2]
-                      //if (slopeAngle < 0) {
-                      //    slopeAngle += PI;  // Add PI to bring it to the positive range
-                      //}
-                      if (abs(pitch) > 20 && abs(pitch) < 30)
-                          slopeAngle = -0.523599;
-                      if (abs(pitch) > 30 && abs(pitch) < 40)
-                          slopeAngle = -0.785398;
-                      if (abs(pitch) > 40 && abs(pitch) < 50)
-                          slopeAngle = -1.0472;
-                      if (abs(pitch) > 50 && abs(pitch) < 80)
-                          slopeAngle = -1.39626;
-                      if (abs(pitch) > 80 && abs(pitch) < 100)
-                          slopeAngle = -1.5708;
-                              
-                      //slopeAngle = constrain(slopeAngle, 0, PI/2);
-                      print("slop angle = ", slopeAngle);
-                      if (tempDifference == 0) 
-                      {
-                          // Stop
-                      } 
-                      else if (tempDifference < 0) 
-                       {
-                          // Move forward along the Y-axis
-                        xPosition = xPosition + abs(tempDifference) * cos(slopeAngle);
-                        yPosition = yPosition + abs(tempDifference) * sin(slopeAngle);
-                       }
-                    
-                      else 
-                      {
-                           // Move backward along the slope
-                        xPosition = xPosition - abs(tempDifference) * cos(slopeAngle);
-                        yPosition = yPosition - abs(tempDifference) * sin(slopeAngle);
-                      }
-                  } 
-                  else 
-                  {
-                    println("Block is along Y-axis");
-                  // Perform actions for Y-axis orientation
-                      if (tempDifference == 0) 
-                      {
-                          // Stop
-                      } else if (tempDifference < 0) 
-                      {
-                          // Move forward along the Y-axis
-                          yPosition = yPosition + abs(tempDifference);
-                      } 
-                      else 
-                      {
-                          // Move backward along the Y-axis
-                          yPosition = yPosition - abs(tempDifference);
-                      }
-                  }
+                float pitchInRadians = radians(pitch);
+          
+                //print("slop angle = ", pitchInRadians);
+                if (tempDifference == 0) 
+                {
+                // Stop
+                }
+                else if (tempDifference < 0) 
+                {
+                // Move forward along the Y-axis
+                  xPosition = xPosition + abs(tempDifference) * cos(pitchInRadians);
+                  yPosition = yPosition + abs(tempDifference) * -sin(pitchInRadians);
+                  
+                  float distance = sqrt(pow((abs(tempDifference) * cos(pitchInRadians)) - xPositionInitial, 2) + pow((abs(tempDifference) * -sin(pitchInRadians)) - yPositionInitial, 2));
+                  totalDistanceCovered += abs(tempDifference); 
+                  xPositionInitial = abs(tempDifference) * cos(pitchInRadians);
+                  yPositionInitial = abs(tempDifference) * -sin(pitchInRadians);
+                  print("abs(tempDifference) :" , abs(tempDifference));
+                  print(" cos(pitchInRadians :" , -sin(pitchInRadians));
+                 
+                }
+                else 
+                {
+                 // Move backward along the slope
+                  xPosition = xPosition - abs(tempDifference) * cos(pitchInRadians);
+                  yPosition = yPosition - abs(tempDifference) * -sin(pitchInRadians);
+                  
+                  float distance = sqrt(pow((abs(tempDifference) * cos(pitchInRadians)) - xPositionInitial, 2) + pow((abs(tempDifference) * -sin(pitchInRadians)) - yPositionInitial, 2));
+                  totalDistanceCovered -= abs(tempDifference); 
+                  xPositionInitial = abs(tempDifference) * cos(pitchInRadians);
+                  yPositionInitial = abs(tempDifference) * sin(pitchInRadians);
+                }
+                 
               } 
               
                 prevTemp = temp;
-
+                print("Total Distance covered :" , totalDistanceCovered);
                 
                 delay(50);
             }
